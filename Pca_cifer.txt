@@ -1,0 +1,181 @@
+# ============================================================
+#       CIFAR-10 → Normalization → Flatten → PCA → Plot
+# ============================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from keras.datasets import cifar10
+from sklearn.decomposition import PCA
+
+# ------------------------------------------------------------
+# 1) LOAD CIFAR-10 DATASET
+# ------------------------------------------------------------
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+print("Training Data Shape :", x_train.shape)
+print("Testing Data Shape  :", x_test.shape)
+print("Training Labels Shape :", y_train.shape)
+
+# ------------------------------------------------------------
+# 2) UNIQUE CLASSES
+# ------------------------------------------------------------
+classes = np.unique(y_train)
+print("\nTotal Classes:", len(classes))
+print("Classes:", classes.flatten())
+
+# ------------------------------------------------------------
+# 3) LABEL DICTIONARY
+# ------------------------------------------------------------
+label_dict = {
+ 0: 'airplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer',
+ 5: 'dog', 6: 'frog', 7: 'horse', 8: 'ship', 9: 'truck'
+}
+
+# ------------------------------------------------------------
+# 4) VISUALIZE SAMPLE IMAGES
+# ------------------------------------------------------------
+plt.figure(figsize=(6,6))
+
+plt.subplot(1,2,1)
+plt.imshow(x_train[0])
+plt.title(f"Label: {label_dict[y_train[0][0]]}")
+
+plt.subplot(1,2,2)
+plt.imshow(x_test[0])
+plt.title(f"Label: {label_dict[y_test[0][0]]}")
+
+plt.show()
+
+# ------------------------------------------------------------
+# 5) NORMALIZE PIXELS (0–255 → 0–1)
+# ------------------------------------------------------------
+print("\nPixel Range Before:", (np.min(x_train), np.max(x_train)))
+x_train = x_train / 255.0
+print("Pixel Range After :", (np.min(x_train), np.max(x_train)))
+
+# ------------------------------------------------------------
+# 6) FLATTEN IMAGES
+#     CIFAR-10: 32×32×3 → 3072 features
+# ------------------------------------------------------------
+x_train_flat = x_train.reshape(-1, 3072)
+print("\nFlattened Shape:", x_train_flat.shape)
+
+# ------------------------------------------------------------
+# 7) CREATE A DATAFRAME
+# ------------------------------------------------------------
+feat_cols = [f"pixel{i}" for i in range(3072)]
+df_cifar = pd.DataFrame(x_train_flat, columns=feat_cols)
+df_cifar["label"] = y_train
+
+print("\nDataFrame Shape:", df_cifar.shape)
+print(df_cifar.head())
+
+# ------------------------------------------------------------
+# 8) APPLY PCA (2 COMPONENTS)
+# ------------------------------------------------------------
+pca = PCA(n_components=2)
+principal_components = pca.fit_transform(df_cifar.iloc[:, :-1])
+
+principal_df = pd.DataFrame({
+    "PC1": principal_components[:, 0],
+    "PC2": principal_components[:, 1],
+    "label": y_train.flatten()
+})
+
+print("\nExplained Variance Ratio:", pca.explained_variance_ratio_)
+
+# ------------------------------------------------------------
+# 9) VISUALIZE PCA RESULT (2D SCATTER PLOT)
+# ------------------------------------------------------------
+plt.figure(figsize=(16,10))
+
+sns.scatterplot(
+    x="PC1", y="PC2",
+    hue="label",
+    palette=sns.color_palette("tab10", 10),
+    data=principal_df,
+    legend="full",
+    alpha=0.25
+)
+
+plt.title("CIFAR-10 PCA Visualization (2 Components)")
+plt.show()
+
+
+/***************Explnation***************/
+
+1) CIFAR-10 Dataset
+
+50,000 training images
+
+10,000 testing images
+
+Each image is 32×32 pixels with 3 RGB channels
+
+Shape:
+
+(50000, 32, 32, 3)
+
+✔ 2) Normalization
+
+Pixel values:
+
+Before: 0 → 255
+
+After: 0 → 1
+
+This helps PCA, Neural Networks, CNNs, etc.
+
+✔ 3) Flattening
+
+Original image shape:
+
+32 × 32 × 3 = 3072 features
+
+
+We reshape:
+
+(50000, 3072)
+
+✔ 4) Pandas DataFrame
+
+We convert flattened images into a DataFrame:
+
+pixel0, pixel1, ..., pixel3071, label
+
+✔ 5) PCA (Dimensionality Reduction)
+
+We apply:
+
+PCA(n_components = 2)
+
+
+This reduces 3072-dimensional images → 2 components.
+
+Explained Variance Ratio example:
+
+[0.29, 0.11]
+
+
+Meaning:
+
+PC1 explains 29% of variance
+
+PC2 explains 11%
+
+(Images are complex → needs many components)
+
+✔ 6) Visualization
+
+Scatter plot with 10 colors (one for each class)
+
+Airplane → blue  
+Automobile → green  
+Bird → red  
+Cat → orange  
+... etc
+
+
+Shows how PCA clusters CIFAR-10 into only 2 dimensions.

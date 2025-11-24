@@ -1,0 +1,176 @@
+⭐ 1. Create a one-dimensional labeled array using pd.Series()
+import pandas as pd
+import numpy as np
+
+# 1. Create a labeled one-dimensional array (Series)
+s = pd.Series([10, 20, 30, 40], index=['a', 'b', 'c', 'd'])
+print("Series Example:\n", s)
+
+
+📌 Explanation:
+A Series is like a single column with labels (index + values).
+
+⭐ 2. Create a DataFrame with 50 rows and 50 columns + automatic label
+# 2. Create a 50x50 DataFrame of random numbers
+rows, cols = 50, 50
+col_names = [f"C{i}" for i in range(cols)]
+df = pd.DataFrame(np.random.randn(rows, cols), columns=col_names)
+
+# Add automatic label column (Label_0 to Label_4 repeating)
+df['label'] = [f"Label_{i % 5}" for i in range(rows)]
+
+print(df.head())
+
+
+📌 Explanation:
+
+50 randomly generated rows
+
+50 numerical columns
+
+label column added automatically
+
+⭐ 3. Understanding df.describe() and df.info()
+print(df.describe())   # statistical summary
+print(df.info())       # column names, count, data types
+
+
+📌 Explanation:
+
+describe() → mean, std, min/max, quartiles
+
+info() → datatype, non-null counts
+
+⭐ 4. Access Top & Bottom Rows (head & tail)
+print(df.head())   # top 5 rows
+print(df.tail())   # last 5 rows
+
+
+📌 Explanation:
+Helps quickly inspect your data.
+
+⭐ 5. Check DataFrame Shape
+print(df.shape)   # (rows, columns)
+
+⭐ 6. Convert DataFrame to NumPy & Transpose
+arr = df.to_numpy()
+print(arr)
+
+df_T = df.T
+print(df_T.head())
+
+
+📌 Why important?
+
+Converting to NumPy helps in scientific calculations.
+
+Transpose rearranges rows ↔ columns.
+
+⭐ 7. Sorting (sort_index, sort_values)
+# sort columns alphabetically
+sorted_by_index = df.sort_index(axis=1)
+print(sorted_by_index.head())
+
+# sort rows by values of column C0
+sorted_by_values = df.sort_values(by='C0', ascending=False)
+print(sorted_by_values[['C0','label']].head())
+
+⭐ 8. Create new DataFrame df2 and Use loc & iloc
+df2 = pd.DataFrame({
+    'A': [5, -1, 0, 7, 3],
+    'B': ['x','y','z','x','y'],
+    'Category': ['alpha','beta','beta','alpha','gamma']
+},
+index=['R0','R1','R2','R3','R4'])
+
+# LOC → label based
+print(df2.loc['R2'])
+
+# LOC for rows and columns
+print(df2.loc['R1':'R3', ['A','B']])
+
+# ILOC → position based
+print(df2.iloc[0])          # first row
+print(df2.iloc[0:3, 0:2])   # slice
+
+
+📌 Remember:
+
+loc[] → uses LABELS
+
+iloc[] → uses NUMBERS
+
+⭐ 9. Handling Missing Values (dropna, fillna, isna)
+df_null = df.head(10).copy()
+df_null.loc[0,'C0'] = np.nan
+df_null.loc[1,'C1'] = np.nan
+
+print(df_null.isna().sum())   # check missing
+
+print(df_null.dropna())       # drop all rows containing NA
+
+print(df_null.fillna(0))      # replace NA with 0
+
+print(df_null.fillna(df_null.mean(numeric_only=True)))   # fill with mean
+
+⭐ 10. Detect & Remove Duplicates
+dup_df = pd.DataFrame({
+    'X':[1,2,2,3,1],
+    'Y':['a','b','b','c','a']
+})
+
+print(dup_df.duplicated())
+print(dup_df.drop_duplicates())
+
+⭐ 11. One-Hot Encoding using pd.get_dummies
+ohe_df = pd.get_dummies(df2, columns=['B','Category'])
+print(ohe_df)
+
+
+📌 Converts categories → 0/1 columns.
+
+⭐ 12. Boolean Indexing (rows where A > 0)
+positive_A = df2[df2['A'] > 0]
+print(positive_A)
+
+⭐ 13. Importance of concat (merge DataFrames)
+dfa = pd.DataFrame({'val':[1,2,3]}, index=['a','b','c'])
+dfb = pd.DataFrame({'val':[4,5]}, index=['d','e'])
+
+# vertical (append rows)
+concat_v = pd.concat([dfa, dfb], axis=0)
+print(concat_v)
+
+# horizontal (add side by side)
+concat_h = pd.concat([dfa, dfb], axis=1)
+print(concat_h)
+
+
+📌 Concat is used for:
+
+Combining datasets
+
+Appending batches
+
+Joining feature sets
+
+⭐ 14. Importance of df.corr()
+corr_matrix = df[['C0','C1','C2','C3','C4']].corr()
+print(corr_matrix)
+
+
+📌 Why important?
+
+Shows relationship between numeric features
+
+Detect multicollinearity
+
+Helps in feature selection
+
+⭐ 15. Import Dataset from Outside
+df_external = pd.read_csv("myfile.csv")     # CSV
+df_excel = pd.read_excel("myfile.xlsx")     # Excel
+
+✔️ Your complete Pandas practice notebook is ready.
+
+If you want:

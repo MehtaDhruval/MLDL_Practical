@@ -1,0 +1,254 @@
+# ============================================================
+# COMPLETE SVM IMPLEMENTATION (Manual GD + Sklearn)
+# LINEAR CLASSIFIER + NON-LINEAR CASES (moons, circles)
+# ============================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs, make_moons, make_circles
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.svm import SVC
+
+# ------------------------------------------------------------
+# PART 1 — GENERATE LINEARLY SEPARABLE DATA
+# ------------------------------------------------------------
+X, y = make_blobs(n_samples=200, centers=2, random_state=42)
+plt.scatter(X[:,0], X[:,1], c=y)
+plt.title("Linearly Separable Blob Data")
+plt.show()
+
+# Convert labels 0 → 1 and 1 → -1 (SVM standard)
+y = np.where(y == 0, 1, -1)
+
+# ------------------------------------------------------------
+# PART 2 — TRAIN-TEST SPLIT
+# ------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42
+)
+
+# ------------------------------------------------------------
+# PART 3 — MANUAL SVM (PRIMAL FORM) USING GRADIENT DESCENT
+# ------------------------------------------------------------
+def svm_fit(X, y, lr = 0.01, lambda_ = 0.01, epochs=100):
+    n_samples, n_features = X.shape
+    w = np.zeros(n_features)
+    b = 0
+
+    for _ in range(epochs):
+        for i, x_i in enumerate(X):
+
+            condition = y[i] * (np.dot(x_i, w) - b) >= 1
+
+            if condition:
+                # correct classification region
+                w = w - lr * (2 * lambda_ * w)
+            else:
+                # misclassified region
+                w = w - lr * (2 * lambda_ * w - y[i] * x_i)
+                b = b - lr * y[i]
+
+    return w, b
+
+def predict(X, w, b):
+    linear_output = np.dot(X, w) - b
+    return np.where(linear_output >= 0, 1, -1)
+
+# Train manual SVM
+w, b = svm_fit(X_train, y_train)
+y_pred = predict(X_test, w, b)
+acc_manual = accuracy_score(y_test, y_pred)
+
+print("Manual SVM Accuracy on blobs:", acc_manual)
+
+# ------------------------------------------------------------
+# PART 4 — SKLEARN SVM (for comparison)
+# ------------------------------------------------------------
+model = SVC(kernel='linear')
+model.fit(X_train, y_train)
+y_pred_sk = model.predict(X_test)
+acc_sklearn = accuracy_score(y_test, y_pred_sk)
+
+print("Sklearn Linear SVM Accuracy:", acc_sklearn)
+
+# ------------------------------------------------------------
+# PART 5 — NON-LINEAR CASE (MOONS)
+# ------------------------------------------------------------
+X1, y1 = make_moons(n_samples=100, noise=0.05, random_state=42)
+plt.scatter(X1[:,0], X1[:,1], c=y1)
+plt.title("Moons Data (Non-linear)")
+plt.show()
+
+# Convert labels to +1/-1
+y1 = np.where(y1 == 0, 1, -1)
+
+X1_train, X1_test, y1_train, y1_test = train_test_split(X1, y1, test_size=0.20)
+
+# Manual SVM fails because data is not linearly separable
+w1, b1 = svm_fit(X1_train, y1_train)
+y1_pred = predict(X1_test, w1, b1)
+acc_moons_manual = accuracy_score(y1_test, y1_pred)
+
+print("Manual SVM accuracy on Moons (linear separator):", acc_moons_manual)
+
+# Sklearn SVM with RBF kernel (success)
+model_rbf = SVC(kernel='rbf')
+model_rbf.fit(X1_train, y1_train)
+y1_pred_rbf = model_rbf.predict(X1_test)
+print("Sklearn RBF SVM accuracy on Moons:", accuracy_score(y1_test, y1_pred_rbf))
+
+# ------------------------------------------------------------
+# PART 6 — NON-LINEAR CASE (CIRCLES)
+# ------------------------------------------------------------
+X2, y2 = make_circles(n_samples=100, noise=0.05, factor=0.3, random_state=42)
+plt.scatter(X2[:,0], X2[:,1], c=y2)
+plt.title("Circles Data (Non-linear)")
+plt.show()
+
+y2 = np.where(y2 == 0, 1, -1)
+
+X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.20)
+
+# Manual SVM fails again
+w2, b2 = svm_fit(X2_train, y2_train)
+y2_pred = predict(X2_test, w2, b2)
+acc_circles_manual = accuracy_score(y2_test, y2_pred)
+
+print("Manual SVM accuracy on Circles:", acc_circles_manual)
+
+# Sklearn RBF kernel for circles
+model_rbf2 = SVC(kernel='rbf')
+model_rbf2.fit(X2_train, y2_train)
+y2_pred_rbf = model_rbf2.predict(X2_test)
+print("Sklearn RBF SVM accuracy on Circles:", accuracy_score(y2_test, y2_pred_rbf))
+
+
+/*********Explnatiom**********************/
+
+🧠 STEP-BY-STEP EXPLANATION (ALL CONCEPTS)
+🚀 1) What is SVM?
+
+SVM finds a line (2D), plane (3D), or hyperplane (nD) such that:
+
+For +1 class:
+𝑤
+⋅
+𝑥
+−
+𝑏
+≥
+1
+w⋅x−b≥1
+For −1 class:
+𝑤
+⋅
+𝑥
+−
+𝑏
+≤
+−
+1
+w⋅x−b≤−1
+
+It tries to maximize margin = distance between classes.
+
+✏️ 2) Why convert y into +1 and -1?
+
+Mathematically, SVM constraints work with:
+
++1 for positive class
+
+−1 for negative class
+
+So we convert:
+
+0 → +1  
+1 → -1
+
+⚙️ 3) Manual SVM — Gradient Descent Idea
+
+We minimize:
+
+1
+2
+∣
+∣
+𝑤
+∣
+∣
+2
++
+𝐶
+∑
+hinge loss
+2
+1
+	​
+
+∣∣w∣∣
+2
++C∑hinge loss
+
+Where hinge-loss:
+
+loss
+=
+max
+⁡
+(
+0
+,
+1
+−
+𝑦
+(
+𝑤
+⋅
+𝑥
+−
+𝑏
+)
+)
+loss=max(0,1−y(w⋅x−b))
+
+We update weights using:
+
+If correctly classified:
+    w = w - lr * (2λw)
+Else (misclassified):
+    w = w - lr * (2λw - y*x)
+    b = b - lr * y
+
+✨ 4) Why linear SVM fails on Moons & Circles?
+
+Because linear SVM draws a straight line.
+
+But the data is:
+
+Moons: two crescents
+
+Circles: inner + outer ring
+
+You need kernel trick (RBF).
+
+Sklearn solution:
+
+SVC(kernel='rbf')
+
+
+This maps data to high dimension → becomes linearly separable.
+
+📈 5) Accuracy Comparison
+Dataset	Manual Linear SVM	Sklearn Linear SVM	Sklearn RBF SVM
+Blobs (linear)	High	High	High
+Moons	Poor	Poor	Excellent ✔
+Circles	Very poor	Very poor	Excellent ✔
+🎉 Done!
+
+If you want next:
+✔ I can add decision boundary plots for manual SVM
+✔ Add hinge loss graph
+✔ Extend to multi-class SVM
+✔ Add Polynomial kernel SVM

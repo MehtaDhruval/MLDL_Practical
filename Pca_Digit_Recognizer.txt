@@ -1,0 +1,230 @@
+# ============================================================
+#      MNIST DIGIT RECOGNIZER — PCA Visualization + KNN
+# ============================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import plotly.express as px
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
+
+# ------------------------------------------------------------
+# 1) LOAD DATA
+# ------------------------------------------------------------
+df = pd.read_csv("/kaggle/input/digit-recognizer/train.csv")
+print("Shape:", df.shape)
+print(df.head())
+
+# ------------------------------------------------------------
+# 2) VISUALIZE A SAMPLE IMAGE
+# ------------------------------------------------------------
+plt.imshow(df.iloc[13051, 1:].values.reshape(28, 28), cmap="gray")
+plt.title(f"Digit: {df.iloc[13051,0]}")
+plt.show()
+
+# ------------------------------------------------------------
+# 3) SPLIT FEATURES & TARGET
+# ------------------------------------------------------------
+X = df.iloc[:, 1:]
+y = df.iloc[:, 0]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+print("Training shape:", X_train.shape)
+
+# ------------------------------------------------------------
+# 4) KNN BASELINE (WITHOUT PCA)
+# ------------------------------------------------------------
+knn = KNeighborsClassifier()
+knn.fit(X_train, y_train)
+y_pred = knn.predict(X_test)
+print("\nKNN Accuracy (No PCA):", accuracy_score(y_test, y_pred))
+
+# ------------------------------------------------------------
+# 5) STANDARDIZATION
+# ------------------------------------------------------------
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ------------------------------------------------------------
+# 6) PCA — Example with 200 Components
+# ------------------------------------------------------------
+pca_200 = PCA(n_components=200)
+X_train_pca200 = pca_200.fit_transform(X_train_scaled)
+X_test_pca200 = pca_200.transform(X_test_scaled)
+
+print("\nPCA(200) reduced shape:", X_train_pca200.shape)
+
+knn = KNeighborsClassifier()
+knn.fit(X_train_pca200, y_train)
+y_pred_pca200 = knn.predict(X_test_pca200)
+print("KNN Accuracy (PCA 200):", accuracy_score(y_test, y_pred_pca200))
+
+# ------------------------------------------------------------
+# 7) FULL PCA (to measure explained variance)
+# ------------------------------------------------------------
+pca_full = PCA(n_components=None)
+pca_full.fit(X_train_scaled)
+
+# Explained variance cumulative plot
+plt.figure(figsize=(10,6))
+plt.plot(np.cumsum(pca_full.explained_variance_ratio_))
+plt.xlabel("Number of Components")
+plt.ylabel("Cumulative Explained Variance")
+plt.title("PCA Explained Variance Curve")
+plt.grid()
+plt.show()
+
+# ------------------------------------------------------------
+# 8) PCA — 2D Visualization
+# ------------------------------------------------------------
+pca2 = PCA(n_components=2)
+X_train_pca2 = pca2.fit_transform(X_train_scaled)
+
+pca2_df = pd.DataFrame({
+    "PC1": X_train_pca2[:, 0],
+    "PC2": X_train_pca2[:, 1],
+    "label": y_train.astype(str)
+})
+
+fig = px.scatter(
+    pca2_df,
+    x="PC1", y="PC2",
+    color="label",
+    title="PCA (2 Components) Visualization",
+    opacity=0.5,
+    color_discrete_sequence=px.colors.qualitative.G10
+)
+fig.show()
+
+# ------------------------------------------------------------
+# 9) PCA — 3D Visualization
+# ------------------------------------------------------------
+pca3 = PCA(n_components=3)
+X_train_pca3 = pca3.fit_transform(X_train_scaled)
+
+pca3_df = pd.DataFrame({
+    "PC1": X_train_pca3[:, 0],
+    "PC2": X_train_pca3[:, 1],
+    "PC3": X_train_pca3[:, 2],
+    "label": y_train.astype(str)
+})
+
+fig = px.scatter_3d(
+    pca3_df,
+    x="PC1", y="PC2", z="PC3",
+    color="label",
+    title="PCA (3 Components) 3D Visualization"
+)
+fig.show()
+
+
+/**********Expnation**********************/
+
+✔ 1. Load MNIST (Digit Recognizer)
+
+train.csv has:
+
+1 column: label
+
+784 columns: pixel values
+
+Example shape:
+
+(42000, 785)
+
+✔ 2. Show a digit
+
+Convert row → 28×28 image:
+
+plt.imshow(df.iloc[i,1:].values.reshape(28,28))
+
+✔ 3. Split into train/test
+
+80% training
+
+20% testing
+
+✔ 4. Baseline KNN Accuracy (Raw Pixels)
+
+KNN without any preprocessing:
+
+Accuracy ~ 0.965
+
+
+But KNN is extremely slow → 12 seconds per prediction (because 784 dimensions).
+
+✔ 5. Standardization
+
+PCA requires scaling:
+
+pixel_scaled = (pixel - mean)/std
+
+✔ 6. PCA with 200 components
+
+Reducing pixel dimensions:
+
+784 → 200
+
+
+Accuracy after PCA:
+
+~0.951
+
+
+Reason: Some information lost by PCA.
+
+✔ 7. PCA Explained Variance Curve
+
+We plot:
+
+np.cumsum(pca.explained_variance_ratio_)
+
+
+This shows how many components are enough to preserve:
+
+90% variance
+
+95% variance
+
+99% variance
+
+✔ 8. PCA 2D Visualization
+
+We project:
+
+784 → 2 components
+
+
+Plot using Plotly:
+
+Interactive
+
+Zoomable
+
+Color-coded by digit
+
+This reveals overlapping classes.
+
+✔ 9. PCA 3D Visualization
+
+Better separation than 2D.
+
+📊 WHAT YOU SEE:
+
+2D PCA clusters overlap → digits are complex
+
+3D PCA improves but still limited
+
+Best accuracy is still with many PCA components
+
+KNN is slow without PCA
+
+PCA speeds up KNN massively

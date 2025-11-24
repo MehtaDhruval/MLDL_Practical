@@ -1,0 +1,158 @@
+# ============================================================
+#         CIFAR-10 IMAGE CLASSIFICATION USING CNN
+# ============================================================
+
+import tensorflow as tf
+from tensorflow.keras import datasets, layers, models
+import matplotlib.pyplot as plt
+
+# ------------------------------------------------------------
+# 1. Load CIFAR-10 dataset
+# ------------------------------------------------------------
+(train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
+
+# Normalize images 0–255 → 0–1
+train_images, test_images = train_images / 255.0, test_images / 255.0
+
+class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer',
+               'dog', 'frog', 'horse', 'ship', 'truck']
+
+# ------------------------------------------------------------
+# 2. Show 25 sample images
+# ------------------------------------------------------------
+plt.figure(figsize=(10,10))
+for i in range(25):
+    plt.subplot(5,5,i+1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(train_images[i])
+    plt.xlabel(class_names[train_labels[i][0]])
+plt.show()
+
+# ------------------------------------------------------------
+# 3. Build CNN model
+# ------------------------------------------------------------
+model = models.Sequential([
+    layers.Conv2D(32, (3,3), activation='relu', input_shape=(32,32,3)),
+    layers.MaxPool2D((2,2)),
+
+    layers.Conv2D(64, (3,3), activation='relu'),
+    layers.MaxPool2D((2,2)),
+
+    layers.Conv2D(64, (3,3), activation='relu'),
+
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(10)      # 10 classes
+])
+
+# ------------------------------------------------------------
+# 4. Compile the model
+# ------------------------------------------------------------
+model.compile(
+    optimizer='adam',
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics=['accuracy']
+)
+
+# ------------------------------------------------------------
+# 5. Train the model
+# ------------------------------------------------------------
+history = model.fit(
+    train_images, train_labels,
+    epochs=5,
+    validation_data=(test_images, test_labels)
+)
+
+# ------------------------------------------------------------
+# 6. Plot training accuracy
+# ------------------------------------------------------------
+plt.plot(history.history['accuracy'], label='accuracy')
+plt.plot(history.history['val_accuracy'], label='val_accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.ylim([0.5,1])
+plt.legend(loc='lower right')
+plt.show()
+
+# ------------------------------------------------------------
+# 7. Evaluate the model
+# ------------------------------------------------------------
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+print(f"Final Test Accuracy: {test_acc}")
+
+
+📌 PART–2: MNIST CNN (Regression Instead of Classification)
+
+# ============================================================
+#        MNIST DIGIT PREDICTION USING CNN REGRESSION
+# ============================================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
+# ------------------------------------------------------------
+# 1. Load MNIST digits
+# ------------------------------------------------------------
+(X_train, y_train), (X_test, y_test) = mnist.load_data()
+
+# Normalize
+X_train = X_train.astype("float32") / 255.0
+X_test = X_test.astype("float32") / 255.0
+
+# Add channel dimension for CNN
+X_train = X_train.reshape(-1, 28, 28, 1)
+X_test = X_test.reshape(-1, 28, 28, 1)
+
+y_train = y_train.astype("float32")
+y_test = y_test.astype("float32")
+
+# ------------------------------------------------------------
+# 2. Build regression CNN model
+# ------------------------------------------------------------
+model = Sequential([
+    Conv2D(32, (3,3), activation="relu", input_shape=(28,28,1)),
+    MaxPooling2D((2,2)),
+
+    Conv2D(64, (3,3), activation="relu"),
+    MaxPooling2D((2,2)),
+
+    Flatten(),
+    Dense(64, activation="relu"),
+    Dense(1)     # Output: a single number ("digit")
+])
+
+# ------------------------------------------------------------
+# 3. Compile (Regression → MSE)
+# ------------------------------------------------------------
+model.compile(optimizer="adam", loss="mse")
+
+# ------------------------------------------------------------
+# 4. Train
+# ------------------------------------------------------------
+model.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.1)
+
+# ------------------------------------------------------------
+# 5. Evaluate
+# ------------------------------------------------------------
+loss = model.evaluate(X_test, y_test)
+print(f"Test MSE Loss: {loss}")
+
+# ------------------------------------------------------------
+# 6. Predict a digit
+# ------------------------------------------------------------
+idx = 1
+pred = model.predict(X_test[idx:idx+1])
+
+print(f"Predicted (regression output): {pred[0][0]:.2f}")
+print(f"Actual digit: {y_test[idx]}")
+
+plt.imshow(X_test[idx].reshape(28,28), cmap="gray")
+plt.title("Test Image")
+plt.show()
+
+

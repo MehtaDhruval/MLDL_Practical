@@ -1,0 +1,195 @@
+# ============================================================
+# COMPLETE DATA PREPROCESSING + CLASSIFICATION PIPELINE
+# ============================================================
+
+from sklearn import neighbors, datasets, preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix
+import numpy as np
+
+# ------------------------------------------------------------
+# 1) LOAD IRIS DATASET
+# ------------------------------------------------------------
+iris = datasets.load_iris()
+
+# We take only 2 features for easy plotting & understanding
+X = iris.data[:, :2]
+y = iris.target
+
+print("Original X shape:", X.shape)
+print("Original y labels:", np.unique(y))
+
+# ------------------------------------------------------------
+# 2) TRAIN–TEST SPLIT
+# ------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, random_state=42, test_size=0.25
+)
+
+print("\nTrain/Test Split done!")
+
+# ------------------------------------------------------------
+# 3) STANDARDIZATION (important for KNN, SVM, Logistic Reg.)
+# ------------------------------------------------------------
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train_std = scaler.transform(X_train)
+X_test_std = scaler.transform(X_test)
+
+print("\nStandardized Training Data:")
+print(X_train_std[:5])
+
+# ------------------------------------------------------------
+# 4) NORMALIZATION (each row → unit length)
+# ------------------------------------------------------------
+from sklearn.preprocessing import Normalizer
+
+normalizer = Normalizer().fit(X_train_std)
+X_train_norm = normalizer.transform(X_train_std)
+X_test_norm = normalizer.transform(X_test_std)
+
+print("\nNormalized Training Data:")
+print(X_train_norm[:5])
+
+# ------------------------------------------------------------
+# 5) BINARIZATION (convert values to 0 & 1)
+# ------------------------------------------------------------
+from sklearn.preprocessing import Binarizer
+
+binarizer = Binarizer(threshold=0.0).fit(X)
+binary_X = binarizer.transform(X)
+
+print("\nBinarized X sample:")
+print(binary_X[:5])
+
+# ------------------------------------------------------------
+# 6) LABEL ENCODING (convert category → number)
+#    Note: Iris y is already numeric, but we demonstrate it anyway.
+# ------------------------------------------------------------
+from sklearn.preprocessing import LabelEncoder
+
+enc = LabelEncoder()
+y_encoded = enc.fit_transform(y)
+
+print("\nEncoded y labels:")
+print(y_encoded[:10])
+
+# ------------------------------------------------------------
+# 7) TRAIN–TEST SPLIT AGAIN for classifier (clean)
+# ------------------------------------------------------------
+X_train2, X_test2, y_train2, y_test2 = train_test_split(
+    X, y_encoded, random_state=0
+)
+
+# ------------------------------------------------------------
+# 8) KNN CLASSIFIER (correct model for classification)
+# ------------------------------------------------------------
+clf = neighbors.KNeighborsClassifier(n_neighbors=5)
+clf.fit(X_train2, y_train2)
+
+# ------------------------------------------------------------
+# 9) PREDICTION
+# ------------------------------------------------------------
+y_pred = clf.predict(X_test2)
+
+print("\nPredicted labels:", y_pred)
+print("Actual labels:   ", y_test2)
+
+# ------------------------------------------------------------
+# 10) CONFUSION MATRIX
+# ------------------------------------------------------------
+cm = confusion_matrix(y_test2, y_pred)
+print("\nConfusion Matrix:")
+print(cm)
+
+# ------------------------------------------------------------
+# 11) ACCURACY
+# ------------------------------------------------------------
+acc = accuracy_score(y_test2, y_pred)
+print("\nAccuracy:", acc)
+
+
+/************Explnation**********************/
+📘 STEP-BY-STEP EXPLANATION
+1) Load Iris dataset
+iris = datasets.load_iris()
+X = iris.data[:, :2]
+y = iris.target
+
+
+We choose only 2 features for simplicity.
+
+2) Train / Test split
+train_test_split(...)
+
+
+Splits data into training and testing sets.
+
+3) Standardization (VERY IMPORTANT)
+
+Formula:
+
+𝑥
+′
+=
+𝑥
+−
+mean
+std
+x
+′
+=
+std
+x−mean
+	​
+
+
+It improves performance of many ML models.
+
+4) Normalization
+
+Makes each data point (row) have unit length:
+
+∣
+∣
+𝑥
+∣
+∣
+=
+1
+∣∣x∣∣=1
+
+Useful for KNN, K-Means, Cosine distance.
+
+5) Binarization
+
+Turns values into 0/1 based on threshold.
+
+6) Label Encoding
+
+Converts text labels → numbers.
+
+7) KNN Classification
+
+Better for this dataset than Linear Regression.
+
+8) Prediction
+
+Model predicts class labels.
+
+9) Confusion Matrix
+
+Shows:
+
+True Positive
+
+False Positive
+
+True Negative
+
+False Negative
+
+10) Accuracy Score
+Accuracy= 
+Correct Predictions / Total Prediction​
+	​
+

@@ -1,0 +1,299 @@
+⭐ Step 1 — Import Libraries & Create Dataset
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Create DataFrame manually (NO CSV)
+data = pd.DataFrame({
+    'Age': [10,12,13,14,15,16,17,18,19,20,
+            21,22,23,24,25,26,27,28,29,30],
+    'Weight': [30,32,35,38,40,42,45,47,49,52,
+               54,56,57,59,60,62,63,65,66,68]
+})
+
+print(data)
+
+
+✔ We made our own dataset with 20 rows
+✔ Now everything will run correctly.
+
+⭐ Step 2 — Take X, Y, and Calculate Means
+X = data["Age"]
+y = data["Weight"]
+n = len(data)
+
+x_bar = X.mean()
+y_bar = y.mean()
+
+print("Mean Age:", x_bar)
+print("Mean Weight:", y_bar)
+
+⭐ Step 3 — Calculate (xi – x̄) and (yi – ȳ)
+a = []   # (xi - x_bar)
+b = []   # (yi - y_bar)
+
+for i in X:
+    a.append(i - x_bar)
+
+for j in y:
+    b.append(j - y_bar)
+
+⭐ Step 4 — Multiply (xi – x̄)(yi – ȳ)
+# Multiply lists
+z = []
+for i in range(n):
+    z.append(a[i] * b[i])
+
+⭐ Step 5 — Function to Square Elements
+def square_list(values):
+    return [v*v for v in values]
+
+a_square = square_list(a)
+b_square = square_list(b)
+
+⭐ Step 6 — Calculate Slope (m) and Intercept (c)
+
+Formula:
+
+𝑚
+=
+∑
+(
+𝑥
+𝑖
+−
+𝑥
+ˉ
+)
+(
+𝑦
+𝑖
+−
+𝑦
+ˉ
+)
+∑
+(
+𝑥
+𝑖
+−
+𝑥
+ˉ
+)
+2
+m=
+∑(xi−
+x
+ˉ
+)
+2
+∑(xi−
+x
+ˉ
+)(yi−
+y
+ˉ
+	​
+
+)
+	​
+
+𝑐
+=
+𝑦
+ˉ
+−
+𝑚
+𝑥
+ˉ
+c=
+y
+ˉ
+	​
+
+−m
+x
+ˉ
+sum_amultiplyb = sum(z)
+sum_a_square = sum(a_square)
+
+m_slope = sum_amultiplyb / sum_a_square
+c_coefficient = y_bar - (m_slope * x_bar)
+
+print("Slope m =", m_slope)
+print("Intercept c =", c_coefficient)
+
+⭐ Step 7 — Predict Y Values (Manual Regression)
+y_pred = []
+
+for age in X:
+    y_pred.append(m_slope * age + c_coefficient)
+
+print("Predicted Values:\n", y_pred)
+
+⭐ Step 8 — Predict Weight for Age = 25
+y_25 = m_slope * 25 + c_coefficient
+print("Predicted Weight at Age 25 =", y_25)
+
+⭐ Step 9 — Plot Scatter + Regression Line
+plt.scatter(X, y, color='blue', label='Actual Points')
+plt.plot(X, y_pred, color='red', label='Regression Line')
+plt.xlabel("Age")
+plt.ylabel("Weight")
+plt.legend()
+plt.show()
+
+⭐ Step 10 — Perform Regression Using sklearn
+from sklearn.linear_model import LinearRegression
+
+# Convert X, y into proper shape
+X_r = np.array(X).reshape(-1,1)
+y_r = np.array(y).reshape(-1,1)
+
+reg = LinearRegression()
+reg.fit(X_r, y_r)
+
+print("Sklearn Slope:", reg.coef_[0])
+print("Sklearn Intercept:", reg.intercept_)
+
+⭐ Step 11 — Plot sklearn Regression Line
+y_pred2 = reg.predict(X_r)
+
+plt.scatter(X, y, color='blue')
+plt.plot(X, y_pred2, color='green')
+plt.xlabel("Age")
+plt.ylabel("Weight")
+plt.show()
+
+🎉 Your code is now complete, clean, and works 100%
+
+
+
+/************************************ Full Code ****************************************/
+
+
+# =============================================
+#     FULL LINEAR REGRESSION CODE (ONE FILE)
+# =============================================
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+# ---------------------------------------------
+# 1. CREATE DATAFRAME (No external CSV needed)
+# ---------------------------------------------
+data = pd.DataFrame({
+    'Age': [10,12,13,14,15,16,17,18,19,20,
+            21,22,23,24,25,26,27,28,29,30],
+    'Weight': [30,32,35,38,40,42,45,47,49,52,
+               54,56,57,59,60,62,63,65,66,68]
+})
+
+print("\n=== DATASET ===")
+print(data)
+
+# ---------------------------------------------
+# 2. SEPARATE X AND y
+# ---------------------------------------------
+X = data["Age"]
+y = data["Weight"]
+n = len(data)
+
+x_bar = X.mean()
+y_bar = y.mean()
+
+print("\nMean Age =", x_bar)
+print("Mean Weight =", y_bar)
+
+# ---------------------------------------------
+# 3. CALCULATE (xi - x_bar) AND (yi - y_bar)
+# ---------------------------------------------
+a = [i - x_bar for i in X]      # xi - x̄
+b = [j - y_bar for j in y]      # yi - ȳ
+
+# ---------------------------------------------
+# 4. CALCULATE PRODUCT (xi - x̄)(yi - ȳ)
+# ---------------------------------------------
+z = [a[i] * b[i] for i in range(n)]
+
+# ---------------------------------------------
+# 5. FUNCTION TO SQUARE VALUES
+# ---------------------------------------------
+def square_list(values):
+    return [v*v for v in values]
+
+a_square = square_list(a)
+
+# ---------------------------------------------
+# 6. MANUAL LINEAR REGRESSION FORMULA
+#    m = Σ(x-x̄)(y-ȳ) / Σ(x-x̄)²
+#    c = ȳ - m*x̄
+# ---------------------------------------------
+m_slope = sum(z) / sum(a_square)
+c_coefficient = y_bar - (m_slope * x_bar)
+
+print("\n=== MANUAL REGRESSION RESULTS ===")
+print("Slope (m) =", m_slope)
+print("Intercept (c) =", c_coefficient)
+
+# ---------------------------------------------
+# 7. PREDICT VALUES USING MANUAL FORMULA
+# ---------------------------------------------
+y_pred = [(m_slope * age + c_coefficient) for age in X]
+
+print("\nPredicted Values:")
+print(y_pred)
+
+# Predict weight at age 25
+y_25 = m_slope * 25 + c_coefficient
+print("\nWeight prediction at Age 25 =", y_25)
+
+# ---------------------------------------------
+# 8. PLOT MANUAL REGRESSION LINE
+# ---------------------------------------------
+plt.scatter(X, y, label="Actual Points", color="blue")
+plt.plot(X, y_pred, label="Regression Line", color="red")
+plt.xlabel("Age")
+plt.ylabel("Weight")
+plt.title("Manual Linear Regression")
+plt.legend()
+plt.show()
+
+# ---------------------------------------------
+# 9. REGRESSION USING SKLEARN
+# ---------------------------------------------
+X_r = np.array(X).reshape(-1, 1)
+y_r = np.array(y).reshape(-1, 1)
+
+reg = LinearRegression()
+reg.fit(X_r, y_r)
+
+print("\n=== SKLEARN REGRESSION RESULTS ===")
+print("Sklearn Slope =", reg.coef_[0][0])
+print("Sklearn Intercept =", reg.intercept_[0])
+
+# ---------------------------------------------
+# 10. PREDICT USING SKLEARN
+# ---------------------------------------------
+y_pred2 = reg.predict(X_r)
+
+# ---------------------------------------------
+# 11. PLOT SKLEARN REGRESSION
+# ---------------------------------------------
+plt.scatter(X_r, y_r, color="green", label="Actual Points")
+plt.plot(X_r, y_pred2, color="black", label="Sklearn Line")
+plt.xlabel("Age")
+plt.ylabel("Weight")
+plt.title("Sklearn Linear Regression")
+plt.legend()
+plt.show()
+
+# ---------------------------------------------
+# 12. SHOW COEFFICIENT TABLE
+# ---------------------------------------------
+coef_table = pd.DataFrame(reg.coef_, columns=['Coefficient'])
+print("\n=== Coefficient Table ===")
+print(coef_table)
+
+print("\n=== PROGRAM COMPLETED SUCCESSFULLY ===")

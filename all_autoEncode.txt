@@ -1,0 +1,208 @@
+# ============================================================
+#                  IMPORT LIBRARIES
+# ============================================================
+import keras
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+from keras.datasets import mnist
+from keras.models import Model
+from keras.layers import Input, Dense, Dropout, Flatten, Reshape
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+from tensorflow.keras.utils import to_categorical
+
+
+# ============================================================
+#                  LOAD & PREPARE DATA
+# ============================================================
+(X_train, _), (X_test, _) = mnist.load_data()
+
+# Reshape for image-based & FC autoencoders
+X_train = X_train.reshape(-1, 28, 28, 1).astype("float32")/255.
+X_test  = X_test.reshape(-1, 28, 28, 1).astype("float32")/255.
+
+print("X_train shape:", X_train.shape)
+print("Train samples:", X_train.shape[0])
+print("Test samples :", X_test.shape[0])
+
+# Flatten for FC autoencoder
+X_train_flat = X_train.reshape((len(X_train), 784))
+X_test_flat  = X_test.reshape((len(X_test), 784))
+
+
+# ============================================================
+#            1. VANILLA AUTOENCODER (Fully Connected)
+# ============================================================
+
+input_size = 784
+hidden_size = 64
+output_size = 784
+
+x = Input(shape=(input_size,))
+h = Dense(hidden_size, activation='relu')(x)
+r = Dense(output_size, activation='sigmoid')(h)
+
+autoencoder = Model(x, r)
+autoencoder.compile(optimizer='adam', loss='mse')
+
+history_fc = autoencoder.fit(
+    X_train_flat, X_train_flat,
+    epochs=5, batch_size=128,
+    validation_data=(X_test_flat, X_test_flat)
+)
+
+# Encoder model
+encoder_fc = Model(x, h)
+encoded_imgs = encoder_fc.predict(X_test_flat)
+
+# Reconstructed images
+decoded_imgs = autoencoder.predict(X_test_flat)
+
+
+# ------------------ Display Encoded Vectors ------------------
+n = 10
+plt.figure(figsize=(20, 4))
+for i in range(n):
+    ax = plt.subplot(1, n, i+1)
+    plt.imshow(encoded_imgs[i].reshape(4, 16).T)
+    plt.gray()
+    ax.axis("off")
+plt.show()
+
+
+# ------------------ Display Reconstructions ------------------
+plt.figure(figsize=(20, 6))
+for i in range(n):
+    # original
+    ax = plt.subplot(2, n, i+1)
+    plt.imshow(X_test_flat[i].reshape(28, 28))
+    plt.gray()
+    ax.axis("off")
+
+    # reconstruction
+    ax = plt.subplot(2, n, i+n+1)
+    plt.imshow(decoded_imgs[i].reshape(28, 28))
+    plt.gray()
+    ax.axis("off")
+
+plt.show()
+
+
+# ------------------ Loss Plot ------------------
+plt.plot(history_fc.history['loss'])
+plt.plot(history_fc.history['val_loss'])
+plt.title('Vanilla Autoencoder Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train', 'Validation'])
+plt.show()
+
+
+# ============================================================
+#                  2. MULTILAYER AUTOENCODER
+# ============================================================
+
+hidden_size = 128
+code_size = 64
+
+x = Input(shape=(784,))
+h1 = Dense(hidden_size, activation='relu')(x)
+h = Dense(code_size, activation='relu')(h1)
+h2 = Dense(hidden_size, activation='relu')(h)
+r = Dense(784, activation='sigmoid')(h2)
+
+autoencoder2 = Model(x, r)
+autoencoder2.compile(optimizer='adam', loss='mse')
+
+history_deep = autoencoder2.fit(
+    X_train_flat, X_train_flat,
+    epochs=5, batch_size=128,
+    validation_data=(X_test_flat, X_test_flat)
+)
+
+decoded_imgs2 = autoencoder2.predict(X_test_flat)
+
+# ------------------ Display Reconstructions ------------------
+plt.figure(figsize=(20, 6))
+for i in range(n):
+    ax = plt.subplot(2, n, i+1)
+    plt.imshow(X_test_flat[i].reshape(28,28))
+    plt.gray()
+    ax.axis("off")
+
+    ax = plt.subplot(2, n, i+n+1)
+    plt.imshow(decoded_imgs2[i].reshape(28,28))
+    plt.gray()
+    ax.axis("off")
+
+plt.show()
+
+# ------------------ Loss Plot ------------------
+plt.plot(history_deep.history['loss'])
+plt.plot(history_deep.history['val_loss'])
+plt.title('Multilayer Autoencoder Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train', 'Validation'])
+plt.show()
+
+
+# ============================================================
+#              3. CONVOLUTIONAL AUTOENCODER
+# ============================================================
+
+x = Input(shape=(28, 28, 1))
+
+# Encoder
+c1 = Conv2D(16, (3,3), activation='relu', padding='same')(x)
+p1 = MaxPooling2D((2,2), padding='same')(c1)
+c2 = Conv2D(8, (3,3), activation='relu', padding='same')(p1)
+p2 = MaxPooling2D((2,2), padding='same')(c2)
+c3 = Conv2D(8, (3,3), activation='relu', padding='same')(p2)
+h = MaxPooling2D((2,2), padding='same')(c3)
+
+# Decoder
+c4 = Conv2D(8, (3,3), activation='relu', padding='same')(h)
+u1 = UpSampling2D((2,2))(c4)
+c5 = Conv2D(8, (3,3), activation='relu', padding='same')(u1)
+u2 = UpSampling2D((2,2))(c5)
+c6 = Conv2D(16, (3,3), activation='relu', padding='same')(u2)
+u3 = UpSampling2D((2,2))(c6)
+r = Conv2D(1, (3,3), activation='sigmoid', padding='same')(u3)
+
+autoencoder_conv = Model(x, r)
+autoencoder_conv.compile(optimizer='adadelta', loss='binary_crossentropy')
+
+history_conv = autoencoder_conv.fit(
+    X_train, X_train,
+    epochs=3, batch_size=128,
+    validation_data=(X_test, X_test)
+)
+
+decoded_imgs_conv = autoencoder_conv.predict(X_test)
+
+
+# ------------------ Display Reconstructions ------------------
+plt.figure(figsize=(20,6))
+for i in range(n):
+    ax = plt.subplot(2, n, i+1)
+    plt.imshow(X_test[i].reshape(28,28))
+    plt.gray()
+    ax.axis("off")
+
+    ax = plt.subplot(2, n, i+n+1)
+    plt.imshow(decoded_imgs_conv[i].reshape(28,28))
+    plt.gray()
+    ax.axis("off")
+
+plt.show()
+
+# ------------------ Loss Plot ------------------
+plt.plot(history_conv.history['loss'])
+plt.plot(history_conv.history['val_loss'])
+plt.title('Convolutional Autoencoder Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train','Validation'])
+plt.show()

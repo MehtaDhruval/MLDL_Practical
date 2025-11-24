@@ -1,0 +1,234 @@
+# logistic_gd_vs_sklearn.py
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# ------------------------------
+# 1) Generate synthetic data
+# ------------------------------
+# Two features, binary classes — reproducible with random_state
+X, y = make_classification(
+    n_samples=200,
+    n_features=2,
+    n_redundant=0,
+    n_informative=2,
+    n_clusters_per_class=1,
+    class_sep=1.5,
+    random_state=42
+)
+
+# ------------------------------
+# 2) Quick scatter plot of data
+# ------------------------------
+plt.figure(figsize=(7, 5))
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', edgecolors='k')
+plt.title("Dummy Binary Classification Data")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.grid(True)
+plt.show()
+
+# ------------------------------
+# 3) Train scikit-learn LogisticRegression
+# ------------------------------
+sk_model = LogisticRegression()
+sk_model.fit(X, y)
+
+# sklearn accuracy on training data (for a quick check)
+y_pred_sk = sk_model.predict(X)
+acc_sk = accuracy_score(y, y_pred_sk)
+print("sklearn logistic regression accuracy (train):", acc_sk)
+
+# ------------------------------
+# 4) Prepare data for manual GD
+#    Add bias (intercept) column
+# ------------------------------
+# X_b has shape (n_samples, n_features + 1)
+X_b = np.c_[np.ones((X.shape[0], 1)), X].astype(float)
+y_vec = y.astype(float)  # shape (n_samples,)
+
+# ------------------------------
+# 5) Sigmoid and cost functions
+# ------------------------------
+def sigmoid(z):
+    # Numerically stable sigmoid
+    # z can be scalar or array
+    return 1.0 / (1.0 + np.exp(-z))
+
+def compute_cost(X, y, theta):
+    """
+    Compute logistic loss (average negative log-likelihood)
+    X: (n_samples, n_features+1)
+    y: (n_samples,)
+    theta: (n_features+1,)
+    """
+    m = y.size
+    z = X @ theta
+    h = sigmoid(z)
+    # add epsilon for numerical stability in log
+    eps = 1e-9
+    cost = -(1.0 / m) * (y @ np.log(h + eps) + (1 - y) @ np.log(1 - h + eps))
+    return cost
+
+# ------------------------------
+# 6) Gradient descent implementation (vectorized)
+# ------------------------------
+def gradient_descent(X, y, alpha=0.1, epochs=1000, verbose=False):
+    """
+    Returns: theta (learned parameters), cost_history (list)
+    X: (n_samples, n_features+1)
+    y: (n_samples,)
+    """
+    # initialize theta to zeros (shape n_features+1,)
+    theta = np.zeros(X.shape[1], dtype=float)
+    cost_history = []
+
+    m = y.size
+
+    for epoch in range(epochs):
+        z = X @ theta              # (n_samples,)
+        h = sigmoid(z)             # (n_samples,)
+        gradient = (X.T @ (h - y)) / m  # (n_features+1,)
+        theta -= alpha * gradient
+
+        cost = compute_cost(X, y, theta)
+        cost_history.append(cost)
+
+        if verbose and (epoch % (epochs // 10) == 0 or epoch == epochs-1):
+            print(f"Epoch {epoch+1}/{epochs}  cost={cost:.6f}")
+
+    return theta, cost_history
+
+# Hyperparameters — you can tune these
+alpha = 0.5       # learning rate
+epochs = 2000     # iterations
+
+theta_gd, cost_history = gradient_descent(X_b, y_vec, alpha=alpha, epochs=epochs, verbose=True)
+
+print("\nManual GD learned theta:", theta_gd)
+print("Final cost (manual GD):", cost_history[-1])
+
+# ------------------------------
+# 7) Compute predictions & accuracy for manual model
+# ------------------------------
+z_train = X_b @ theta_gd
+y_pred_manual = (sigmoid(z_train) >= 0.5).astype(int)
+acc_manual = accuracy_score(y, y_pred_manual)
+print("Manual GD logistic regression accuracy (train):", acc_manual)
+
+# ------------------------------
+# 8) Decision boundary visualization
+#    Create a meshgrid over feature space and evaluate predictions
+# ------------------------------
+# grid definition
+xx, yy = np.meshgrid(
+    np.linspace(X[:, 0].min() - 1, X[:, 0].max() + 1, 200),
+    np.linspace(X[:, 1].min() - 1, X[:, 1].max() + 1, 200)
+)
+
+grid_points = np.c_[xx.ravel(), yy.ravel()]  # (num_grid, 2)
+
+# sklearn boundary (predict on raw features)
+Z_sklearn = sk_model.predict(grid_points).reshape(xx.shape)
+
+# manual boundary: add bias column before predicting
+grid_with_bias = np.c_[np.ones((grid_points.shape[0], 1)), grid_points]
+Z_manual = (sigmoid(grid_with_bias @ theta_gd) >= 0.5).reshape(xx.shape)
+
+# ------------------------------
+# 9) Plot side-by-side
+# ------------------------------
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.contourf(xx, yy, Z_sklearn, alpha=0.3, cmap='bwr')
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', edgecolors='k')
+plt.title("Logistic Regression (scikit-learn)\nAccuracy: {:.3f}".format(acc_sk))
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+
+plt.subplot(1, 2, 2)
+plt.contourf(xx, yy, Z_manual, alpha=0.3, cmap='bwr')
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', edgecolors='k')
+plt.title("Logistic Regression (Manual GD)\nAccuracy: {:.3f}".format(acc_manual))
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+
+plt.tight_layout()
+plt.show()
+
+# ------------------------------
+# 10) Plot cost history (convergence)
+# ------------------------------
+plt.figure(figsize=(7,4))
+plt.plot(cost_history)
+plt.title("Cost (Log-loss) over iterations (manual GD)")
+plt.xlabel("Epoch")
+plt.ylabel("Cost")
+plt.grid(True)
+plt.show()
+
+/*Explnation**************/
+
+tep-by-step explanation (map to code sections)
+
+1) Data generation
+
+We use make_classification(...) to create a simple separable 2D binary classification dataset. This is just for demonstration — in real projects you would load real data.
+
+2) Visualize the points
+
+plt.scatter(...) gives a quick check whether classes are linearly separable (looks separable here).
+
+3) sklearn baseline
+
+LogisticRegression().fit(X, y) trains a logistic classifier (liblinear/solver).
+
+We compute accuracy_score(y, model.predict(X)) to get a baseline performance.
+
+4) Add bias column for manual model
+
+To handle intercept c with vectorized math, we prepend a column of ones to X to get X_b. Now parameters theta include bias as theta[0].
+
+5) Sigmoid and cost
+
+sigmoid(z) is the logistic function mapping z to (0,1).
+
+compute_cost computes the mean logistic loss (negative log-likelihood) with a small eps inside logs to avoid log(0).
+
+6) Gradient descent (vectorized)
+
+theta initialized to zeros.
+
+At each epoch:
+
+compute linear output z = X @ theta
+
+compute probabilities h = sigmoid(z)
+
+gradient = (X.T @ (h - y)) / m (vectorized)
+
+update theta -= alpha * gradient
+
+compute and save cost
+
+Vectorization is fast and concise.
+
+7) Predictions & accuracy
+
+Predictions done with (sigmoid(X_b @ theta) >= 0.5) to convert probabilities to class labels.
+
+Compare with sklearn accuracy to ensure we learned a similar boundary.
+
+8) Decision boundary plotting
+
+Create a dense grid of points across the feature space.
+
+Use both models to predict on the grid, reshape to contour shape, and plot contourf to visualize decision regions.
+
+9) Plot cost history
+
+Plotting cost_history vs epochs shows whether gradient descent converged (cost should decrease).
+

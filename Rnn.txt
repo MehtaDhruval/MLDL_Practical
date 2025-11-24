@@ -1,0 +1,163 @@
+# ============================================================
+#          IMDB RNN MODELS — One-to-One, One-to-Many,
+#          Many-to-One, Many-to-Many (FULL CLEAN VERSION)
+# ============================================================
+
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, SimpleRNN, LSTM, Dense
+from tensorflow.keras.utils import to_categorical
+
+# ------------------------------------------------------------
+# 1. Load IMDB dataset
+# ------------------------------------------------------------
+max_features = 10000   # Vocabulary size
+max_len = 200          # Max review length
+
+(X_train, y_train), (X_test, y_test) = imdb.load_data(num_words=max_features)
+
+# Pad all sequences to same length
+X_train = sequence.pad_sequences(X_train, maxlen=max_len)
+X_test = sequence.pad_sequences(X_test, maxlen=max_len)
+
+print("Training shape:", X_train.shape, y_train.shape)
+print("Vocabulary size:", max_features)
+
+# ============================================================
+# 🔹 ONE-TO-ONE RNN
+# Only first word → one output sentiment
+# ============================================================
+
+model_one_to_one = Sequential([
+    Embedding(max_features, 32),
+    SimpleRNN(16, activation='tanh'),
+    Dense(1, activation='sigmoid')
+])
+
+model_one_to_one.compile(
+    optimizer="adam",
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+# Use only FIRST word of every review
+X_train_1 = X_train[:, :1]
+X_test_1  = X_test[:, :1]
+
+print("\nTraining ONE-TO-ONE RNN...")
+model_one_to_one.fit(
+    X_train_1, y_train,
+    epochs=2, batch_size=64,
+    validation_split=0.2
+)
+
+# ============================================================
+# 🔹 ONE-TO-MANY RNN
+# Input: 5 words → Output: next 5 words
+# ============================================================
+
+seq_len = 5
+X_seq, y_seq = [], []
+
+# Build training pairs
+for review in X_train[:5000]:
+    if len(review) > 2*seq_len:
+        X_seq.append(review[:seq_len])         # first 5
+        y_seq.append(review[seq_len:2*seq_len])# next 5
+
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+
+# One-hot encode target
+y_seq_cat = np.array([
+    to_categorical(seq, num_classes=max_features)
+    for seq in y_seq
+])
+
+print("One-to-Many shapes:", X_seq.shape, y_seq_cat.shape)
+
+# Model
+model_one_to_many = Sequential([
+    Embedding(max_features, 32, input_length=seq_len),
+    SimpleRNN(64, return_sequences=True),
+    Dense(max_features, activation='softmax')
+])
+
+model_one_to_many.compile(
+    optimizer="adam",
+    loss="categorical_crossentropy"
+)
+
+print("\nTraining ONE-TO-MANY RNN...")
+model_one_to_many.fit(X_seq, y_seq_cat, epochs=2, batch_size=64)
+
+# ============================================================
+# 🔹 MANY-TO-ONE RNN (Sentiment Classification)
+# Full sequence → one output
+# ============================================================
+
+model_many_to_one = Sequential([
+    Embedding(max_features, 64),
+    LSTM(128),
+    Dense(1, activation='sigmoid')
+])
+
+model_many_to_one.compile(
+    optimizer="adam",
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+print("\nTraining MANY-TO-ONE RNN...")
+model_many_to_one.fit(
+    X_train, y_train,
+    epochs=3, batch_size=64,
+    validation_split=0.2
+)
+
+loss, acc = model_many_to_one.evaluate(X_test, y_test)
+print("\nMany-to-One Test Accuracy:", acc)
+
+# ============================================================
+# 🔹 MANY-TO-MANY RNN (Shifted Sequence Prediction)
+# Input: 5 words sliding window → Output: next 5 words
+# ============================================================
+
+seq_len = 5
+X_seq2, y_seq2 = [], []
+
+for review in X_train[:2000]:        # smaller subset for speed
+    for i in range(len(review) - seq_len):
+        X_seq2.append(review[i:i+seq_len])
+        y_seq2.append(review[i+1:i+seq_len+1]) # shifted by 1
+
+X_seq2 = np.array(X_seq2)
+y_seq2 = np.array(X_seq2)
+
+print("Many-to-Many shapes:", X_seq2.shape, y_seq2.shape)
+
+# Model
+model_many_to_many = Sequential([
+    Embedding(max_features, 64, input_length=seq_len),
+    LSTM(128, return_sequences=True),
+    Dense(max_features, activation='softmax')
+])
+
+model_many_to_many.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy"   # labels = integers
+)
+
+print("\nTraining MANY-TO-MANY RNN...")
+model_many_to_many.fit(X_seq2, y_seq2, epochs=2, batch_size=128)
+
+# ------------------------------------------------------------
+# Show RNN Weight Shapes (U, W, b)
+# ------------------------------------------------------------
+print("\nLAYER WEIGHT SHAPES:")
+for layer in model_many_to_many.layers:
+    weights = layer.get_weights()
+    print(layer.name, "→", [w.shape for w in weights])
